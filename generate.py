@@ -19,7 +19,7 @@ pv278@cam.ac.uk, 17/06/15
 from docopt import docopt
 import numpy as np
 from math import radians, sqrt
-from atoms import Atoms
+from xyzlib import Atoms
 
 
 def Pt_basis(a=2.775):
