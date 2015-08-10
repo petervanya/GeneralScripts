@@ -2,7 +2,7 @@
 """
 Collection of often used functions for
 * input/output
-* rotating, translating and printing data
+* rotating, translating and printing data in xyz format
 
 2nd version
 pv278@cam.ac.uk, 17/06/15
@@ -12,9 +12,11 @@ from math import *
 
 
 def read_Pt_spins(file="../Files/lowest_Pt_spins.txt"):
-    """Read lowest spin states into dictionary,
-       either Goddard's or our results
-       NOT USED"""
+    """
+    Read lowest spin states into a dictionary,
+    either WA Goddard's or our results
+    NOT USED NOW
+    """
     states = [line.split(":") for line in open(file, "r")]
     states = dict(states)
     for i in states.keys():
@@ -23,7 +25,13 @@ def read_Pt_spins(file="../Files/lowest_Pt_spins.txt"):
 
 
 class Atoms:
-    """class to produce and manipulate xyz coords with atom names"""
+    """
+    Class to produce and manipulate xyz coords, contains
+    * atom names
+    * atom coordinates
+    * charge
+    * spin state
+    """
     def __init__(self, names=[], coords=np.array([]), charge=0, spin=1):
         self.names = list(names)
         self.coords = np.array(coords)
@@ -31,38 +39,51 @@ class Atoms:
         self.spin = spin
 
     def __len__(self):
-        """number of atoms"""
+        """Number of atoms"""
         return len(self.coords)
 
     def __repr__(self):
-        """print xyz onto screen"""
-        M, N = self.coords.shape
-        line = ""
-        line += str(self.charge) + " " + str(self.spin) + "\n"
-        for i in range(M):
-            line += self.names[i] + "\t"
-            for j in range(N):
-                line += "%.6f" % self.coords[i, j] + "\t"
-            line += "\n"
-        return line.rstrip("\n")
+        """Print xyz onto screen"""
+        if not self.coords:
+            return ""
+        else:
+            M, N = self.coords.shape
+            line = ""
+            line += str(self.charge) + " " + str(self.spin) + "\n"
+            for i in range(M):
+                line += self.names[i] + "\t"
+                for j in range(N):
+                    line += "%.6f" % self.coords[i, j] + "\t"
+                line += "\n"
+            return line.rstrip("\n")
     
     def __str__(self):
-        """print xyz onto screen"""
-        M, N = self.coords.shape
-        line = ""
-        line += str(self.charge) + " " + str(self.spin) + "\n"
-        for i in range(M):
-            line += self.names[i] + "\t"
-            for j in range(N):
-                line += "%.6f" % self.coords[i, j] + "\t"
-            line += "\n"
-        return line.rstrip("\n")
-
-    def save(self, filename):
-        """save xyz coords, charge and spin into file"""
-        with open(filename, "w") as f:
-            f.write(str(self.charge) + " " + str(self.spin) + "\n")
+        """Print xyz onto screen"""
+        if not self.coords:
+            return ""
+        else:
             M, N = self.coords.shape
+            line = ""
+            line += str(self.charge) + " " + str(self.spin) + "\n"
+            for i in range(M):
+                line += self.names[i] + "\t"
+                for j in range(N):
+                    line += "%.6f" % self.coords[i, j] + "\t"
+                line += "\n"
+            return line.rstrip("\n")
+
+    def save(self, filename, vmd=False):
+        """
+        Save xyz coords, charge and spin into file
+        Also can save in VMD-compatible format w/ 1st line 
+        with number of atoms and 2nd line a comment
+        """
+        with open(filename, "w") as f:
+            M, N = self.coords.shape
+            if vmd:
+                f.write(str(M) + "\nBlabla\n")
+            else:
+                f.write(str(self.charge) + " " + str(self.spin) + "\n")
             for i in range(M):
                 line = str(self.names[i]) + "\t"
                 for j in range(N):
@@ -73,7 +94,8 @@ class Atoms:
             print "Coords saved to", filename
 
     def read(self, fname):
-        """read xyz file"""
+        """Read the structure from an xyz file"""
+        assert fname[-3:] == "xyz"
         with open(fname) as f:
             charge, spin = [int(s) for s in f.readline().split()]
             M = np.array([line.split() for line in f.readlines()])
@@ -82,11 +104,12 @@ class Atoms:
         return Atoms(names, coords, charge, spin)
 
     def shift(self, s):
+        """Shift all atoms by a vector s"""
         assert len(s) == 3
-        s = np.array(s)
-        self.coords += s
+        self.coords += np.array(s)
 
     def rotate(self, theta=0, phi=0):
+        """Rotate all atoms by angles theta and phi respectively"""
         N = len(self)
         Rtheta = np.array([[cos(theta),0,-sin(theta)],
                            [0,         1, 0         ],
@@ -102,6 +125,8 @@ class Atoms:
 
 
 def merge_atoms(atoms1, atoms2):
+    """Function to merge two structures into one
+    TODO: rewrite it in the class using __add__"""
     return Atoms(atoms1.names + atoms2.names, \
                  np.vstack((atoms1.coords, atoms2.coords)), \
                  atoms1.charge, \
