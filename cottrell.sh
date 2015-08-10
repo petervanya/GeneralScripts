@@ -30,8 +30,5 @@ export g09root GAUSS_SCRDIR GAUSS_EXEDIR
 . $g09root/g09/bsd/g09.profile
 # =======================
 
-dir=$1
-file=$2
-
-cd /home/pv278/Platinum/$dir
-/home/Gaussian/g09/g09 < $file.gjf > $file.out
+filepath=$1
+/home/Gaussian/g09/g09 < $filepath.gjf > $filepath.out
