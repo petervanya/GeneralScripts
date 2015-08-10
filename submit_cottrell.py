@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 """Usage:
-    submit_cottrell.py <node> <dir> <name> (--bash | --direct) [--cores <nc>] [--dry]
+    submit_cottrell.py <node> <dir> <fname> (--bash | --direct) [--cores <nc>] [--dry]
 
 A script to easily submit Gaussian jobs to the Cottrell cluster
 
 Arguments:
     <node>        Cluster node, from 0 to 10
     <dir>         Directory of the gjf file
-    <name>        Name of the gjf file, no extension
+    <fname>       Name of the gjf file, NO EXTENSION
     --direct      Submit directly using Gaussian form
     --bash        Submit via bash script cottrell.sh
 
@@ -23,11 +23,19 @@ import os
 import subprocess
 import sys
 
+def sup(node):
+    """Get supervisor name"""
+    if node < 10:
+        return "jae"
+    else:
+        return "pdb"
+
+
 if __name__ == "__main__":
     args = docopt(__doc__, version=0.1)
-    schema = Schema({"<node>" : And(Use(int), lambda n: 0 <= n <= 9),
+    schema = Schema({"<node>" : And(Use(int), lambda n: 0 <= n <= 19),
                      "<dir>"  : And(str, len),
-                     "<name>" : And(str, len),
+                     "<fname>": And(str, len),
                      "--cores": And(Use(int), lambda n: 1 <= n <= 16),
                      "--dry"  : bool,
                      "--bash" : bool,
@@ -37,18 +45,18 @@ if __name__ == "__main__":
 #    print args
        
     node = args["<node>"]
-    server = "jae.q@compute-0-" + str(node)
+    server = sup(node) + ".q@compute-0-" + str(node)
     cores = args["--cores"]
 
-    dir = args["<dir>"]
-    filename  = args["<name>"]
+    ddir = args["<dir>"]
+    filename  = args["<fname>"]
     ext = ".gjf"
 
     if args["--bash"]:
-        bashscript = "~/Platinum/Scripts/cottrell.sh"
-#        bashscript = "cottrell.sh"
+        bashscript = "~/Scripts/cottrell.sh"
         submit_string = "qsub -q " + server + " -pe orte " + str(cores) + \
-                        " " + bashscript + " " + dir + " " + filename
+                        " " + bashscript + " " + \
+                        os.path.join(os.getcwd(), ddir, filename)
         if args["--dry"]:
             print submit_string
             sys.exit()
