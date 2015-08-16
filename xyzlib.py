@@ -43,20 +43,19 @@ class Atoms:
         return len(self.coords)
 
     def __repr__(self):
-        """Print xyz onto screen"""
-        if not self.coords:
-            return ""
-        else:
-            M, N = self.coords.shape
-            line = ""
-            line += str(self.charge) + " " + str(self.spin) + "\n"
-            for i in range(M):
-                line += self.names[i] + "\t"
-                for j in range(N):
-                    line += "%.6f" % self.coords[i, j] + "\t"
-                line += "\n"
-            return line.rstrip("\n")
-    
+        """
+        >>> from numpy import array
+        >>> m = Atoms(["Ar"], [(0, 0, 0)])
+        >>> repr(m)
+        "Atoms(names=['Ar'], coords=array([[0, 0, 0]]), charge=0, spin=1)"
+        >>> str(m) == str(eval(repr(m)))
+        True
+        """
+        kwargs = [(attr, getattr(self, attr))
+                  for attr in ['names', 'coords', 'charge', 'spin']
+                  if hasattr(self, attr)]
+        return "Atoms(%s)" % ', '.join('%s=%r' % kw for kw in kwargs)
+
     def __str__(self):
         """Print xyz onto screen"""
         if self.coords.any():
