@@ -59,7 +59,7 @@ class Atoms:
     
     def __str__(self):
         """Print xyz onto screen"""
-        if not self.coords:
+        if not self.coords.size:
             return ""
         else:
             M, N = self.coords.shape
