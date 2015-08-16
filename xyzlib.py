@@ -59,9 +59,7 @@ class Atoms:
     
     def __str__(self):
         """Print xyz onto screen"""
-        if not self.coords:
-            return ""
-        else:
+        if self.coords.any():
             M, N = self.coords.shape
             line = ""
             line += str(self.charge) + " " + str(self.spin) + "\n"
@@ -71,6 +69,8 @@ class Atoms:
                     line += "%.6f" % self.coords[i, j] + "\t"
                 line += "\n"
             return line.rstrip("\n")
+        else:
+            return ""
 
     def save(self, filename, vmd=False):
         """
