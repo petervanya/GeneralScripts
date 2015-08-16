@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """Usage:
-    generate.py water [-s <s>] [-p <p>] [-r <r>]
+    generate.py water [-s <s>] [-p <p>] [-r <r>] [--save <fname>]
     generate.py Pt <cluster> [-s <s>]
     generate.py --atom <a> -s <s>
 
@@ -13,6 +13,7 @@ Options:
     -s <s>,--shift <s>     Shift 0th atom by "x y z" [default: 0 0 0]
     -p <p>,--posPt <p>     Position of 0th atom in Pt lattice vectors "x y z" [default: 0 0 0]
     -r <r>,--rotate <r>    Rotate atoms by theta, phi [default: 0 0]
+    --save <fname>         Save xyz coords
 
 pv278@cam.ac.uk, 17/06/15
 """
@@ -35,9 +36,9 @@ def Pt_basis(a=2.775):
 def gen_water(shift=np.zeros(3), shiftPt=np.zeros(3), theta=0.0, phi=0.0):
     """Init water molecule, already optimised using 6-311G**"""
     coords = np.zeros((3,3))
-    coords[1,0] += 0.757009
-    coords[2,0] += -0.757009
-    coords[1:3,2] += 0.593565
+    coords[1, 1] += 0.757009
+    coords[2, 1] += -0.757009
+    coords[1:3, 2] += 0.593565
     names = ["O", "H", "H"]
     mol = Atoms(names, coords)
     mol.rotate(theta, phi)
@@ -264,17 +265,21 @@ if __name__ == "__main__":
 
     if args["water"]:
         mol = gen_water(shift=shift, shiftPt=posPt, theta=theta, phi=phi)
-        outfile = "water.xyz"
-        mol.save(outfile)
+        print mol
+        if args["--save"]:
+            mol.save(args["--save"])    # "water.xyz"
     elif args["Pt"]:
         cluster = args["<cluster>"]
         mol = gen_Pt(cluster=cluster, shift=shift)
-        outfile = "Pt.xyz"
-        mol.save(outfile)
+        print mol
+        if args["--save"]:
+            mol.save(args["--save"])    # "Pt.xyz"
     else:                    # single atom
         name = args["--atom"]
         coords = [0, 0, 0]
         xyz = Atoms(name, coords)
-        xyz.save(outfile)
+        print xyz
+        if args["--save"]:
+            xyz.save(args["--save"])
 
 
