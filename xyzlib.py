@@ -8,7 +8,9 @@ Collection of often used functions for
 pv278@cam.ac.uk, 17/06/15
 """
 import numpy as np
+from numpy.matlib import repmat
 from math import *
+import os
 
 
 def read_Pt_spins(file="../Files/lowest_Pt_spins.txt"):
@@ -71,6 +73,12 @@ class Atoms:
         else:
             return ""
 
+    def __add__(self, other):
+        return Atoms(self.names + other.names, \
+                     np.vstack((self.coords, other.coords)), \
+                     self.charge, \
+                     self.spin)
+
     def save(self, filename, vmd=False):
         """
         Save xyz coords, charge and spin into file
@@ -105,7 +113,8 @@ class Atoms:
     def shift(self, s):
         """Shift all atoms by a vector s"""
         assert len(s) == 3
-        self.coords += np.array(s)
+        self.coords = self.coords + s    
+        # self.coords += s RAISES ERROR! DeprecationWarning: Implicitly casting between incompatible kinds
 
     def rotate(self, theta=0, phi=0):
         """Rotate all atoms by angles theta and phi respectively"""
@@ -116,21 +125,27 @@ class Atoms:
         Rphi = np.array([[cos(phi),-sin(phi),0],
                          [sin(phi), cos(phi),0],
                          [0,        0,       1]])
- 
         for i in range(N):
             self.coords[i, :] = np.dot(Rtheta, self.coords[i, :])
         for i in range(N):
             self.coords[i, :] = np.dot(Rphi, self.coords[i, :])
 
+    def com(self):
+        """Return centre of mass of atoms"""
+        f = open(os.path.join(os.path.dirname(os.path.realpath(__file__)), "atomic_numbers.txt"), "r")
+        weights = eval(f.read())
+        N = len(self)
+        com = np.zeros(3)
+        for i in range(N):
+            com += self.coords[i, :]*weights[self.names[i]]
+        denom = sum([weights[i] for i in self.names])
+        com /= denom
+        return com
 
-def merge_atoms(atoms1, atoms2):
-    """Function to merge two structures into one
-    TODO: rewrite it in the class using __add__"""
-    return Atoms(atoms1.names + atoms2.names, \
-                 np.vstack((atoms1.coords, atoms2.coords)), \
-                 atoms1.charge, \
-                 atoms1.spin)
-    return A
+    def shift_com(self):
+        """Shift all atoms to their centre of mass"""
+        com = self.com()
+        self.shift(-com)
 
 
 if __name__ == "__main__":
@@ -140,12 +155,19 @@ if __name__ == "__main__":
     print atoms
     
     s = np.arange(3)
-    print "Shifting atoms by", s
+    print "* Shifting atoms by", s
     atoms.shift(s)
     print atoms
 
-    atoms.coords = coords
+    atoms.coords = np.copy(coords)
     theta, phi = 90, 90
-    print "Rotating atoms by theta=%i, phi=%i:" % (theta, phi)
+    print "* Rotating atoms by theta=%i, phi=%i:" % (theta, phi)
     atoms.rotate(radians(theta), radians(phi))
     print atoms
+
+    atoms.coords = np.copy(coords)
+    print "* Shifting atoms to its centre of mass"
+    atoms.shift_com()
+    print atoms
+
+
