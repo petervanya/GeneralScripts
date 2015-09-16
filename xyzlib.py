@@ -104,7 +104,12 @@ class Atoms:
         """Read the structure from an xyz file"""
         assert fname[-3:] == "xyz"
         with open(fname) as f:
-            charge, spin = [int(s) for s in f.readline().split()]
+            firstline = f.readline().split()
+            if len(firstline) == 2:
+                charge, spin = [int(s) for s in firstline]
+            elif len(firstline) == 1:   # VMD format
+                charge, spin = (0, 1)
+                comment = f.readline()  # 2nd comment line
             M = np.array([line.split() for line in f.readlines()])
             names = M[:, 0]
             coords = M[:, 1:4].astype(np.float)
