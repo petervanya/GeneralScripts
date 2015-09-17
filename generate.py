@@ -1,24 +1,31 @@
 #!/usr/bin/env python
 """Usage:
     generate.py water [-s <s>] [-p <p>] [-r <r>] [--save <fname>]
-    generate.py Pt <cluster> [-s <s>]
+    generate.py Pt <cluster> [-s <s>] [--save <fname>]
+    generate.py carbon <Nh> <Nv> [--addH [--Ha <Ha>]] [-s <s>] [--save <fname>]
     generate.py --atom <a> -s <s>
 
-Generate xyz files of some molecules or clusters
+Generate xyz files of some molecules or clusters: 
+Pt custer, water molecule, carbon sheet
 
 Arguments:
     <cluster>              Pt cluster type, e.g. 9_10_9
+    <Nh>                   Number of carbon rings horizontally
+    <Nv>                   Number of carbon rings vertically
 
 Options:
     -s <s>,--shift <s>     Shift 0th atom by "x y z" [default: 0 0 0]
     -p <p>,--posPt <p>     Position of 0th atom in Pt lattice vectors "x y z" [default: 0 0 0]
     -r <r>,--rotate <r>    Rotate atoms by theta, phi [default: 0 0]
     --save <fname>         Save xyz coords
+    --addH                 Add hydrogens around carbon sheet perimeter
+    --Ha <Ha>              Hydrogen distance from first carbon atom [default: 1.0]
 
 pv278@cam.ac.uk, 17/06/15
 """
 from docopt import docopt
 import numpy as np
+from numpy.linalg import norm
 from math import radians, sqrt
 from xyzlib import Atoms
 
@@ -254,6 +261,65 @@ def gen_Pt(a=2.775, cluster="3", shift=np.zeros(3), shiftPt=np.zeros(3),\
         raise SystemExit
     return mol
 
+# ===== carbon
+def create_one_ring(a, shift):
+    """Create one carbon ring"""
+    coords = np.array([[0,      0,           0],
+                       [-a/2,   a*sqrt(3)/2, 0],
+                       [0.0,    a*sqrt(3),   0],
+                       [a,      a*sqrt(3),   0],
+                       [a*3/2,  a*sqrt(3)/2, 0],
+                       [a,      0,           0]])
+    coords += shift
+    return coords
+
+
+def gen_carbon(Nh, Nv, a=1.42, shift=np.zeros(3)):
+    """Generate carbon sheet given number of rings"""
+    N = Nh*Nv
+
+    def remove_overlapped(coords):
+        """Remove overlapped carbon atoms"""
+        eps = 1.0e-5
+        i = 0
+        j = 1
+        while(i < len(coords)):
+            while(j < len(coords)):
+                if norm(coords[i] - coords[j]) < eps:
+                    coords = np.delete(coords, j, axis=0)
+                j += 1
+            i += 1
+            j = i + 1
+        return coords
+
+    dx = 3*a/2
+    dy = a*sqrt(3.0)
+    coords = create_one_ring(a, shift)
+    for n in range(1, N):
+      	j = n%Nv
+      	i = n/Nv #(n-j)/Nv
+      	base = [i*dx, j*dy + i*dy/2, 0.0]
+      	coords = np.vstack((coords, create_one_ring(a, base)))
+    coords = remove_overlapped(coords)
+    return Atoms(["C"]*len(coords), coords)
+
+
+def add_hydrogens(rings, a, b):
+    """Add hydrogen atoms around carbon sheet
+    to make coronene-like molecule"""
+    N = len(rings)
+    H_list = []
+    tol = a + 0.1                  # for each atom, check atoms in this radius
+    for i in range(N):
+        bonds = []                 # bonds for ith carbon atom
+        for j in range(N):
+            if norm(rings[j] - rings[i]) < tol and i != j:
+                bonds.append(j)
+        if len(bonds) == 2:        # edge atoms have two bonds
+            v = -(rings[bonds[0]] - rings[i] + rings[bonds[1]] - rings[i])
+            H_rings = list(rings[i] + v/norm(v)*b)
+            H_list.append(H_rings)
+    return Atoms(["H"]*len(H_list), H_list)
 
 
 if __name__ == "__main__":
@@ -274,7 +340,17 @@ if __name__ == "__main__":
         print mol
         if args["--save"]:
             mol.save(args["--save"])    # "Pt.xyz"
-    else:                    # single atom
+    elif args["carbon"]:
+        a = 1.42
+        Nh, Nv = int(args["<Nh>"]), int(args["<Nv>"])
+        mol = gen_carbon(Nh, Nv, shift=shift)
+        if args["--addH"]: 
+            b = float(args["--Ha"])
+            mol += add_hydrogens(mol.coords, a, b)
+        print mol
+        if args["--save"]:
+            mol.save(args["--save"])
+    else:                   # single atom
         name = args["--atom"]
         coords = [0, 0, 0]
         xyz = Atoms(name, coords)
