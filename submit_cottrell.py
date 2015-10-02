@@ -53,7 +53,7 @@ if __name__ == "__main__":
 
     ddir = args["<dir>"]
     filename  = args["<fname>"]
-    bashscript = "~/Scripts/cottrell.sh"
+    bashscript = "~/GeneralScripts/cottrell.sh"
 
     if args["gaussian"]:
         prog = "gaussian"
