@@ -9,6 +9,8 @@ pv278@cam.ac.uk, 17/06/15
 """
 import numpy as np
 from numpy.matlib import repmat
+from numpy.linalg import norm
+from scipy.linalg import expm
 from math import *
 import os
 
@@ -131,9 +133,18 @@ class Atoms:
                          [sin(phi), cos(phi),0],
                          [0,        0,       1]])
         for i in range(N):
-            self.coords[i, :] = np.dot(Rtheta, self.coords[i, :])
+            self.coords[i] = np.dot(Rtheta, self.coords[i])
         for i in range(N):
-            self.coords[i, :] = np.dot(Rphi, self.coords[i, :])
+            self.coords[i] = np.dot(Rphi, self.coords[i])
+
+    def rotate_SO3(self, omega, alpha):
+        """Rotate coordinates A around vector omega by angle alpha"""
+        R = np.matrix([[0,        -omega[2], omega[1]],
+                       [ omega[2], 0,       -omega[0]],
+                       [-omega[1], omega[0], 0       ]])
+        R *= alpha
+        for i in range(len(self)):
+            self.coords[i] = np.dot(self.coords[i], expm(R))
 
     def com(self):
         """Return centre of mass of atoms"""
@@ -152,11 +163,39 @@ class Atoms:
         com = self.com()
         self.shift(-com)
 
+    def flip(self, n1, n2):
+        """Flip atoms at positions n1, n2 using rotation
+        n1,n2 in {1...N}"""
+        N = len(self)
+        if (n1 not in range(1, N+1)) or (n2 not in range(1, N+1)):
+            raise ValueError
+        centre = np.copy(self.coords[n1-1])
+        dist = np.copy(self.coords[n2-1] - self.coords[n1-1])
+        s = centre + dist/2.0
+        self.shift(-s)
+        omega = np.array([0, dist[2], -dist[1]])
+        omega = omega / norm(omega)
+        self.rotate_SO3(omega, pi)
+        self.shift(s)
+
+    def align(self, n1, n2, axis=[1, 0, 0]):
+        """Align the coords so that atoms n1, n2 lie on x-axis
+        n1, n2 in {1...N}"""
+        N = len(self)
+        if (n1 not in range(1, N+1)) or (n2 not in range(1, N+1)):
+            raise ValueError
+        vec12 = np.copy(self.coords[n2-1] - self.coords[n1-1])
+        alpha = acos( np.dot(vec12, axis)/norm(vec12) )
+        omega = np.cross(vec12, axis)
+        omega = omega / norm(omega)
+        self.rotate_SO3(omega, -alpha)
+
 
 if __name__ == "__main__":
     print "===== Testing the Atoms class ====="
-    coords = np.array([1,0,0] + [0,1,0] + [0,0,1]).reshape((3, 3))
-    atoms = Atoms(["Pt"]*3, coords)
+    #coords = np.array([1, 0, 0] + [0, 1, 0] + [0, 0, 1]).reshape((3, 3))
+    coords = np.array([0, 0, 0] + [1, 0, 2] + [2, 0, 3]).reshape((3, 3))
+    atoms = Atoms(["H", "He", "Li"], coords)
     print atoms
     
     s = np.arange(3)
@@ -173,6 +212,18 @@ if __name__ == "__main__":
     atoms.coords = np.copy(coords)
     print "* Shifting atoms to its centre of mass"
     atoms.shift_com()
+    print atoms
+    
+    atoms.coords = np.copy(coords)
+    n1, n2 = 1, 2
+    print "* Flipping atoms %i, %i:" % (n1, n2)
+    atoms.flip(n1, n2)
+    print atoms
+
+    atoms.coords = np.copy(coords)
+    n1, n2 = 1, 2
+    print "* Aligning atoms %i, %i:" % (n1, n2)
+    atoms.align(n1, n2)
     print atoms
 
 
