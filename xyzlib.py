@@ -12,7 +12,7 @@ from numpy.matlib import repmat
 from numpy.linalg import norm
 from scipy.linalg import expm
 from math import *
-import os
+import os, yaml
 
 
 def read_Pt_spins(file="../Files/lowest_Pt_spins.txt"):
@@ -124,7 +124,7 @@ class Atoms:
         # self.coords += s RAISES ERROR! DeprecationWarning: Implicitly casting between incompatible kinds
 
     def rotate(self, theta=0, phi=0):
-        """Rotate all atoms by angles theta and phi respectively"""
+        """Rotate all atoms by angles theta and phi (radians) respectively"""
         N = len(self)
         Rtheta = np.array([[cos(theta),0,-sin(theta)],
                            [0,         1, 0         ],
@@ -148,20 +148,19 @@ class Atoms:
 
     def com(self):
         """Return centre of mass of atoms"""
-        f = open(os.path.join(os.path.dirname(os.path.realpath(__file__)), "atomic_numbers.txt"), "r")
-        weights = eval(f.read())
+        weights = yaml.load(open(os.path.join(os.path.dirname(os.path.realpath(__file__)),\
+                  "atomic_numbers.txt"), "r"))
         N = len(self)
         com = np.zeros(3)
         for i in range(N):
-            com += self.coords[i, :]*weights[self.names[i]]
+            com += self.coords[i]*weights[self.names[i]]
         denom = sum([weights[i] for i in self.names])
         com /= denom
         return com
 
     def shift_com(self):
         """Shift all atoms to their centre of mass"""
-        com = self.com()
-        self.shift(-com)
+        self.shift(-self.com())
 
     def flip(self, n1, n2):
         """Flip atoms at positions n1, n2 using rotation
