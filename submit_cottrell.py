@@ -58,7 +58,7 @@ if __name__ == "__main__":
     if args["gaussian"]:
         prog = "gaussian"
         filepath = os.path.join(os.getcwd(), ddir, filename)
-        ext = ".gjf"
+        filepath = filepath.rstrip(".xyz")
         if args["--bash"]:
             submit_string = "qsub -q " + server + " -pe orte " + str(cores) + \
                             " " + bashscript + " " + prog + " " + filepath
@@ -67,6 +67,7 @@ if __name__ == "__main__":
                 sys.exit()
             subprocess.call(submit_string, shell=True)
         elif args["--direct"]:
+            ext = ".gjf"
             base_dir = os.path.abspath(os.path.join(os.getcwd(), ".."))
             filedir = os.path.join(base_dir, dir)
             infilepath = filedir + "/" + filename + ext
