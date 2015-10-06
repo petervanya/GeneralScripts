@@ -14,6 +14,14 @@ Collection of method to manipulate files entering or leaving Gaussian.
 * extract data from outfiles
 IMPROVED DOCUMENTATION TO BE PRODUCED
 
+Options:
+    --nproc <np>         Number of processors to use [default: 16]
+    --method <method>    Qchem method [default: B3LYP]
+    --basis <bs>         Basis set [default: 6-31g*]
+    --opt                Produce "Opt" flag
+    --freq               Produce "Freq" flag
+    --scfsteps <scf>     Number of self-consistent steps [default: 1000]
+
 pv278@cam.ac.uk, 06/10/15
 """
 import numpy as np
@@ -51,8 +59,7 @@ def parse_last_coords(infile):
 
 
 def gen_header(p):
-    """Generate Gaussian header with text.
-       arguments: method, basis, opt, text"""
+    """Generate Gaussian header, arguments: method, basis, opt"""
     header = "%nproc=" + str(p.get("np")) + "\n"
     header += "#T " + p.get("method") + "/" + p.get("basis") \
            + " Test " + p.get("opt") + " " + p.get("freq") \
@@ -63,21 +70,21 @@ def gen_header(p):
 
 if __name__ == "__main__":
     args = docopt(__doc__)
-    print args
-    default_header = "#T %nproc=16\nB3LYP/6-31G* Test\n\nBlabla\n\n"
+#    print args
+    default_header = "%nproc=16\n#T B3LYP/6-31G* Test\n\nBlabla\n\n"
+    params = {}
+    params["np"] = args["--nproc"]
+    params["method"] = args["--method"]
+    params["basis"] = args["--basis"]
+    params["opt"] = "Opt" if args["--opt"] else ""
+    params["freq"] = "Freq" if args["--freq"] else ""
+    params["scf"] = "scf=(direct, maxcycle=%s)" % args["--scfsteps"] if args["--scfsteps"] else ""
 
-    if args["<header>"]:
-        params = {}
-        params["np"] = args["<np>"]
-        params["method"] = args["<method>"]
-        params["basis"] = args["<bs>"]
-        params["opt"] = args["--opt"] if args["--opt"] else ""
-        params["freq"] = args["--freq"] if args["--freq"] else ""
-        params["scf"] = "scf=(direct, maxcycle=%s)"% args["<scf>"] if args["<scf>"] else ""
+    if args["gen_header"]:
         header = gen_header(params)
         print header
     
-    if args["parse_coords"]:
+    if args["parse_coords"]:    #TO TEST
         infile = args["<file>"]
         if args["--input"]:
             A = parse_input_coords(infile)
@@ -93,12 +100,18 @@ if __name__ == "__main__":
                 print B
 
     elif args["make_gjf"]:
-        infile = args["<file>"]
         if args["from_xyz"]:
-            assert(infile[-3:] == "xyz")
-            A = Atoms().read(infile)
-            gen_g09_script(header, str(A), outfile)
-        if args["from_out"]:
+            infiles = glob.glob(args["<files>"])
+            A = Atoms().read(infiles[0])
+            for infile in infiles[1:]:
+                A = A + Atoms().read(infile)
+            string = default_header + str(A)   # THINK ABOUT GENERATING HEADERS
+            print string                       # THINK BETTER ABOUT UX
+            if args["--save"]:
+                open(args["--save"]).write()
+
+        if args["from_out"]:  #TO TEST
+            infile = args["<files>"]
             assert(infile[-3:] == "out")
             A = parse_last_coords(infile)
             gen_g09_script(header, str(A), outfile)
