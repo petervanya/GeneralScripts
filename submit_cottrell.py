@@ -58,7 +58,7 @@ if __name__ == "__main__":
     if args["gaussian"]:
         prog = "gaussian"
         filepath = os.path.join(os.getcwd(), ddir, filename)
-        filepath = filepath.rstrip(".xyz")
+        filepath = filepath.rstrip(".gjf")
         if args["--bash"]:
             submit_string = "qsub -q " + server + " -pe orte " + str(cores) + \
                             " " + bashscript + " " + prog + " " + filepath
