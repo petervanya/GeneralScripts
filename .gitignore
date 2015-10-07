@@ -4,3 +4,4 @@
 *.xyz
 gen_freeze.sh
 grep_g09.sh
+xyz_to_vmd.sh
