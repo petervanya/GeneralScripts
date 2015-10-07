@@ -3,16 +3,16 @@
     g09mnpl.py gen_header [--nproc <np>] [--method <method>] [--basis <bs>] 
                           [--opt] [--freq] [--scfsteps <scf>]
     g09mnpl.py parse_coords <file> (--input | --final)
-    g09mnpl.py make_gjf from_xyz <files> [--header <header>]
-    g09mnpl.py make_gjf from_out <file>
+    g09mnpl.py gen_gjf from_xyz <files> [--header <header>] [--save]
+    g09mnpl.py gen_gjf from_out <file>
     g09mnpl.py extract energies <files>  [--save <datafile>]
 
+Gaussian 09 manipulate.
 Collection of method to manipulate files entering or leaving Gaussian.
 * construct gjf files
 * parse xyz coordinates from outfiles
 * generate headers
 * extract data from outfiles
-IMPROVED DOCUMENTATION TO BE PRODUCED
 
 Options:
     --nproc <np>         Number of processors to use [default: 16]
@@ -26,7 +26,7 @@ pv278@cam.ac.uk, 06/10/15
 """
 import numpy as np
 import pandas as pd
-import glob, sys, re
+import glob, os, sys, re
 from docopt import docopt
 from xyzlib import Atoms
 
@@ -99,16 +99,20 @@ if __name__ == "__main__":
             else:
                 print B
 
-    elif args["make_gjf"]:
+    elif args["gen_gjf"]:
         if args["from_xyz"]:
             infiles = glob.glob(args["<files>"])
             A = Atoms().read(infiles[0])
             for infile in infiles[1:]:
                 A = A + Atoms().read(infile)
-            string = default_header + str(A)   # THINK ABOUT GENERATING HEADERS
-            print string                       # THINK BETTER ABOUT UX
+            string = default_header + str(A) + "\n\n"   # THINK ABOUT GENERATING HEADERS
             if args["--save"]:
-                open(args["--save"]).write()
+                fname = infiles[0].rstrip("xyz") + "gjf"
+                open(fname, "w").write(string)
+                print "gjf file written into", fname
+            else:
+                print string
+
 
         if args["from_out"]:  #TO TEST
             infile = args["<files>"]
@@ -121,12 +125,13 @@ if __name__ == "__main__":
         print outfiles
         positions, energies = [], []
         
-        for file in outfiles:
-            E_line = [line for line in open(file) if "SCF Done" in line]
+        for outfile in outfiles:
+            outfile = os.getcwd() + "/" + outfile
+            E_line = [line for line in open(outfile, "r").readlines() if "SCF Done" in line]
             if E_line:       # if energy line exists
                 E_line = E_line[0]
                 energies.append(float(E_line.split()[4]))
-                pos = re.search(r"(?<=_d)[^}]*(?=.out)", file)   # WHAT IS THIS DOING?
+                pos = re.search(r"(?<=_d)[^}]*(?=.out)", outfile)   # WHAT IS THIS DOING?
                 pos = pos.group()
                 positions.append(float(pos))
         
@@ -135,8 +140,8 @@ if __name__ == "__main__":
         tbl = pd.DataFrame(energies, index=positions).sort_index()
         tbl.columns = ["E"]
         print tbl
-        if args["--save"]:
-            datapath = args["--save"]
+        if args["<datafile>"]:
+            datapath = args["<datafile>"]
             tbl.to_csv(datapath, sep="\t", header=False)
             print "Table saved in ", datapath
 
