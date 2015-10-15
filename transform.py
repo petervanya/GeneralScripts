@@ -30,8 +30,7 @@ from docopt import docopt
 if __name__ == "__main__":
     args = docopt(__doc__,version=1.0)
 #    print args
-    filename = args["<file>"]
-    A = Atoms().read(filename)
+    A = Atoms().read(args["<file>"])
 
     if args["--centre"]:
          n = int(args["--centre"])
