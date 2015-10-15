@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """Usage:
     g09mnpl.py gen_header [--nproc <np>] [--method <method>] [--basis <bs>] 
-                          [--opt] [--freq] [--scfsteps <scf>]
+                          [--opt] [--freq] [--scfsteps <scf>] [--misc <misc>]
     g09mnpl.py parse_coords <file> (--input | --final)
     g09mnpl.py gen_gjf from_xyz <files> [--header <header>] [--save]
     g09mnpl.py gen_gjf from_out <file>
@@ -21,12 +21,15 @@ Options:
     --opt                Produce "Opt" flag
     --freq               Produce "Freq" flag
     --scfsteps <scf>     Number of self-consistent steps [default: 1000]
+    --misc <misc>        Various other keywords
+    --header <header>    Set Gaussian header
 
 pv278@cam.ac.uk, 06/10/15
 """
 import numpy as np
 import pandas as pd
 import glob, os, sys, re
+import logging
 from docopt import docopt
 from xyzlib import Atoms
 
@@ -63,15 +66,13 @@ def gen_header(p):
     header = "%nproc=" + str(p.get("np")) + "\n"
     header += "#T " + p.get("method") + "/" + p.get("basis") \
            + " Test " + p.get("opt") + " " + p.get("freq") \
-           + " " + p.get("scf")
+           + " " + p.get("scf") + " " + p.get("misc")
     header += "\n\n" + "Blabla" + "\n\n"
     return header
 
-
-if __name__ == "__main__":
-    args = docopt(__doc__)
-#    print args
-    default_header = "%nproc=16\n#T B3LYP/6-31G* Test\n\nBlabla\n\n"
+ 
+def get_params(args):
+    """Get parameters from command line arguments for the Gaussian header"""
     params = {}
     params["np"] = args["--nproc"]
     params["method"] = args["--method"]
@@ -79,6 +80,17 @@ if __name__ == "__main__":
     params["opt"] = "Opt" if args["--opt"] else ""
     params["freq"] = "Freq" if args["--freq"] else ""
     params["scf"] = "scf=(direct, maxcycle=%s)" % args["--scfsteps"] if args["--scfsteps"] else ""
+    params["misc"] = args["--misc"] if args["--misc"] else ""
+    return params 
+
+
+if __name__ == "__main__":
+    args = docopt(__doc__)
+    logging.basicConfig(filename="debug.log", filemode="w", level=logging.DEBUG, format="%(message)s")
+    logging.info("Script: " + __file__)
+    logging.info("Args:\n" + str(args))
+    default_header = "%nproc=16\n#T B3LYP/6-31G* Test\n\nBlabla\n\n"  # AD HOC SOLUTION
+    params = get_params(args)
 
     if args["gen_header"]:
         header = gen_header(params)
@@ -99,15 +111,18 @@ if __name__ == "__main__":
             else:
                 print B
 
-    elif args["gen_gjf"]:
+    elif args["gen_gjf"]:   # MAKE THIS QUICKER, NOW TOO SLOW
         if args["from_xyz"]:
-            infiles = glob.glob(args["<files>"])
-            A = Atoms().read(infiles[0])
-            for infile in infiles[1:]:
-                A = A + Atoms().read(infile)
-            string = default_header + str(A) + "\n\n"   # THINK ABOUT GENERATING HEADERS
+            xyzfiles = glob.glob(args["<files>"])
+            A = Atoms().read(xyzfiles[0])
+            for xyzfile in xyzfiles[1:]:
+                A = A + Atoms().read(xyzfile)
+            if args["--header"]:
+                string = args["--header"] + "\n\n" + str(A) + "\n\n"
+            else:
+                string = default_header + str(A) + "\n\n"
             if args["--save"]:
-                fname = infiles[0].rstrip("xyz") + "gjf"
+                fname = xyzfiles[0].rstrip("xyz") + "gjf"
                 open(fname, "w").write(string)
                 print "gjf file written into", fname
             else:
@@ -115,9 +130,9 @@ if __name__ == "__main__":
 
 
         if args["from_out"]:  #TO TEST
-            infile = args["<files>"]
-            assert(infile[-3:] == "out")
-            A = parse_last_coords(infile)
+            outfile = args["<files>"]
+            assert(outfile[-3:] == "out")
+            A = parse_last_coords(outfile)
             gen_g09_script(header, str(A), outfile)
 
     elif args["extract"] and args["energies"]:
