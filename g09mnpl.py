@@ -4,7 +4,7 @@
                           [--opt] [--freq] [--scfsteps <scf>] [--misc <misc>]
     g09mnpl.py parse_coords <file> (--input | --final)
     g09mnpl.py gen_gjf from_xyz <files> [--header <header>] [--save]
-    g09mnpl.py gen_gjf from_out <file>
+    g09mnpl.py gen_gjf from_out <file> <newname>
     g09mnpl.py extract energies <files>  [--save <datafile>]
 
 Gaussian 09 manipulate.
@@ -115,27 +115,32 @@ if __name__ == "__main__":
         if args["from_xyz"]:
             xyzfiles = glob.glob(args["<files>"])
             A = Atoms().read(xyzfiles[0])
-            for xyzfile in xyzfiles[1:]:
-                A = A + Atoms().read(xyzfile)
+            if len(xyzfiles) > 0:
+                for xyzfile in xyzfiles[1:]:
+                    A = A + Atoms().read(xyzfile)
             if args["--header"]:
                 string = args["--header"] + "\n\n" + str(A) + "\n\n"
             else:
                 string = default_header + str(A) + "\n\n"
-            if args["--save"]:
-                fname = xyzfiles[0].rstrip("xyz") + "gjf"
-                open(fname, "w").write(string)
-                print "gjf file written into", fname
-            else:
-                print string
+            fname = xyzfiles[0].rstrip("xyz") + "gjf"
+            open(fname, "w").write(string)
+            print "gjf file written into", fname
 
-
-        if args["from_out"]:  #TO TEST
-            outfile = args["<files>"]
-            assert(outfile[-3:] == "out")
+        if args["from_out"]:  #TO TEST, EXTRACT HEADER FROM OUTFILE
+            outfile = args["<file>"]
+            assert(outfile[-3:] == "out")   # NOT USER FRIENDLY
             A = parse_last_coords(outfile)
-            gen_g09_script(header, str(A), outfile)
+            text = open(outfile, "r").readlines()
+            nproc = [line for line in text if "%nproc" in line][0][1:]  # skipping first blank character
+            route = [line for line in text if " #" in line][0][1:]      # same
+            #print re.findall(r"(^.*?%s.*?$)" % "nproc", open(outfile).read(), re.MULTILINE)
+            # print re.findall(r"(^.*?%s.*?$)" % " #", open(outfile).read(), re.MULTILINE)
+            header = nproc + route + "\nBlabla\n\n"
+            newfname = args["<newname>"]
+            open(newfname, "w").write(header + str(A) + "\n\n")
+            print "gjf file written into", newfname
 
-    elif args["extract"] and args["energies"]:
+    if args["extract"] and args["energies"]:
         outfiles = glob.glob(args["<files>"])
         print outfiles
         positions, energies = [], []
@@ -146,7 +151,7 @@ if __name__ == "__main__":
             if E_line:       # if energy line exists
                 E_line = E_line[0]
                 energies.append(float(E_line.split()[4]))
-                pos = re.search(r"(?<=_d)[^}]*(?=.out)", outfile)   # WHAT IS THIS DOING?
+                pos = re.search(r"(?<=_d)[^}]*(?=.out)", outfile) # find distance in file name, NOT GENERAL ENOUGH FOR THIS SCRIPT
                 pos = pos.group()
                 positions.append(float(pos))
         
