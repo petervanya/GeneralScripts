@@ -12,7 +12,7 @@ from numpy.matlib import repmat
 from numpy.linalg import norm
 from scipy.linalg import expm
 from math import *
-import os, yaml
+import sys, os, yaml
 
 
 def read_Pt_spins(file="../Files/lowest_Pt_spins.txt"):
@@ -104,15 +104,24 @@ class Atoms:
 
     def read(self, fname):
         """Read the structure from an xyz file"""
-        assert fname[-3:] == "xyz"
+        if fname[-3:] != "xyz":
+            print "Class", self.__class__.__name__, ": xyz file to read should have extension 'xyz'."
+            sys.exit()
         with open(fname) as f:
-            firstline = f.readline().split()
-            if len(firstline) == 2:
+            string = f.readlines()
+            firstline = string[0].split()
+#            firstline = f.readline().split()
+            if len(firstline) == 4:     # no charge/spin line
+                charge, spin = (0, 1)
+                M = np.array([line.split() for line in string])
+            if len(firstline) == 2:     # standard format
                 charge, spin = [int(s) for s in firstline]
+                M = np.array([line.split() for line in string[1:]])
             elif len(firstline) == 1:   # VMD format
                 charge, spin = (0, 1)
-                comment = f.readline()  # 2nd comment line
-            M = np.array([line.split() for line in f.readlines()])
+#                comment = f.readline()  # 2nd comment line
+                M = np.array([line.split() for line in string[2:]])
+#            M = np.array([line.split() for line in f.readlines()])
             names = M[:, 0]
             coords = M[:, 1:4].astype(np.float)
         return Atoms(names, coords, charge, spin)
