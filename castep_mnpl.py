@@ -24,8 +24,6 @@ import yaml
 from docopt import docopt
 from xyzlib import Atoms   # using class Atoms to manipulate xyz matrices
 
-# comment
-
 def print_lat(lat):
     """Produce string from lattice vectors"""
     s = ""
