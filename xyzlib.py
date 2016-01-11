@@ -157,8 +157,9 @@ class Atoms:
 
     def com(self):
         """Return centre of mass of atoms"""
-        weights = yaml.load(open(os.path.join(os.path.dirname(os.path.realpath(__file__)),\
-                  "atomic_numbers.txt"), "r"))
+#        weights = yaml.load(open(os.path.join(os.path.dirname(os.path.realpath(__file__)),\
+#                  "atomic_weights.txt"), "r"))
+        weights = yaml.load(open("atomic_weights.txt").read())
         N = len(self)
         com = np.zeros(3)
         for i in range(N):
