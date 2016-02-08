@@ -54,7 +54,7 @@ if [ "$1" == "gaussian" ]; then
 elif [ "$1" == "lammps" ]; then
     progpath="/home/pv278/sw/bin/lmp_mpi"
     mpi_run="/opt/openmpi/bin/mpirun"
-    $mpi_run -np $Ncores $progpath < $filepath
+    time $mpi_run -np $Ncores $progpath < $filepath
 else
   Usage
 fi
