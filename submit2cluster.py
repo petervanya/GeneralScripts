@@ -19,7 +19,6 @@ Options:
 pv278@cam.ac.uk, 16/05/15
 """
 from docopt import docopt
-from schema import Schema, And, Use, Optional
 import os, sys, subprocess
 
 def get_sup(node, maxnum=27):
