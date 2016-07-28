@@ -15,13 +15,13 @@ from math import *
 import sys, os, yaml
 
 
-def read_Pt_spins(file="../Files/lowest_Pt_spins.txt"):
+def read_Pt_spins(infile="../Files/lowest_Pt_spins.txt"):
     """
     Read lowest spin states into a dictionary,
     either WA Goddard's or our results
     NOT USED NOW
     """
-    states = [line.split(":") for line in open(file, "r")]
+    states = [line.split(":") for line in open(infile, "r")]
     states = dict(states)
     for i in states.keys():
         states[i] = map(int, states[i].split())
@@ -30,7 +30,7 @@ def read_Pt_spins(file="../Files/lowest_Pt_spins.txt"):
 
 class Atoms:
     """
-    Class to produce and manipulate xyz coords, contains
+    Store and manipulate xyz coordinates, including:
     * atom names
     * atom coordinates
     * charge
@@ -38,13 +38,15 @@ class Atoms:
     """
     def __init__(self, names=[], coords=np.array([]), charge=0, spin=1):
         self.names = list(names)
-        self.coords = np.array(coords)
+        self.coords = np.array(coords, dtype=float)
         self.charge = charge
         self.spin = spin
+
 
     def __len__(self):
         """Number of atoms"""
         return len(self.coords)
+
 
     def __repr__(self):
         """
@@ -59,6 +61,7 @@ class Atoms:
                   for attr in ['names', 'coords', 'charge', 'spin']
                   if hasattr(self, attr)]
         return "Atoms(%s)" % ', '.join('%s=%r' % kw for kw in kwargs)
+
 
     def __str__(self):
         """Print xyz onto screen"""
@@ -75,11 +78,13 @@ class Atoms:
         else:
             return ""
 
+
     def __add__(self, other):
         return Atoms(self.names + other.names, \
                      np.vstack((self.coords, other.coords)), \
                      self.charge, \
                      self.spin)
+
 
     def save(self, filename, vmd=False):
         """
@@ -100,17 +105,18 @@ class Atoms:
                 line += "\n"
                 f.write(line)
             f.close()
-            print "Coords saved to", filename
+            print("Coords saved to", filename)
+
 
     def read(self, fname):
         """Read the structure from an xyz file"""
         if fname[-3:] != "xyz":
-            print "Class", self.__class__.__name__, ": xyz file to read should have extension 'xyz'."
+            print("Class", self.__class__.__name__, ": xyz file \
+                   to read should have extension 'xyz'.")
             sys.exit()
         with open(fname) as f:
             string = f.readlines()
             firstline = string[0].split()
-#            firstline = f.readline().split()
             if len(firstline) == 4:     # no charge/spin line
                 charge, spin = (0, 1)
                 M = np.array([line.split() for line in string])
@@ -119,18 +125,17 @@ class Atoms:
                 M = np.array([line.split() for line in string[1:]])
             elif len(firstline) == 1:   # VMD format
                 charge, spin = (0, 1)
-#                comment = f.readline()  # 2nd comment line
                 M = np.array([line.split() for line in string[2:]])
-#            M = np.array([line.split() for line in f.readlines()])
             names = M[:, 0]
             coords = M[:, 1:4].astype(np.float)
         return Atoms(names, coords, charge, spin)
+
 
     def shift(self, s):
         """Shift all atoms by a vector s"""
         assert len(s) == 3
         self.coords = self.coords + s    
-        # self.coords += s RAISES ERROR! DeprecationWarning: Implicitly casting between incompatible kinds
+
 
     def rotate(self, theta=0, phi=0):
         """Rotate all atoms by angles theta and phi (radians) respectively"""
@@ -146,6 +151,7 @@ class Atoms:
         for i in range(N):
             self.coords[i] = np.dot(Rphi, self.coords[i])
 
+
     def rotate_SO3(self, omega, alpha):
         """Rotate coordinates A around vector omega by angle alpha"""
         R = np.matrix([[0,        -omega[2], omega[1]],
@@ -155,22 +161,21 @@ class Atoms:
         for i in range(len(self)):
             self.coords[i] = np.dot(self.coords[i], expm(R))
 
+
     def com(self):
         """Return centre of mass of atoms"""
-#        weights = yaml.load(open(os.path.join(os.path.dirname(os.path.realpath(__file__)),\
-#                  "atomic_weights.txt"), "r"))
-        weights = yaml.load(open(sys.path[0] + "/atomic_weights.txt").read())
-        N = len(self)
+        weights = yaml.load(open(sys.path[0] + "/atomic_weights.yaml").read())
+        M = sum([weights[i] for i in self.names])
         com = np.zeros(3)
-        for i in range(N):
-            com += self.coords[i]*weights[self.names[i]]
-        denom = sum([weights[i] for i in self.names])
-        com /= denom
-        return com
+        for i in range(len(self)):
+            com += weights[self.names[i]] * self.coords[i]
+        return com / M
+
 
     def shift_com(self):
         """Shift all atoms to their centre of mass"""
         self.shift(-self.com())
+
 
     def flip(self, n1, n2):
         """Flip atoms at positions n1, n2 using rotation
@@ -187,6 +192,7 @@ class Atoms:
         self.rotate_SO3(omega, pi)
         self.shift(s)
 
+
     def align(self, n1, n2, axis=[1, 0, 0]):
         """Align the coords so that atoms n1, n2 lie on x-axis
         n1, n2 in {1...N}"""
@@ -200,39 +206,55 @@ class Atoms:
         self.rotate_SO3(omega, -alpha)
 
 
+    def Rg(self):
+        """Calculate the radius of gyration"""
+        weights = yaml.load(open(sys.path[0] + "/atomic_weights.yaml").read())
+        com = self.com()
+        rg = 0.0
+        M = sum([weights[i] for i in self.names])
+        for i in range(len(self)):
+            rg += weights[self.names[i]] * sum((self.coords[i] - com)**2)
+        return sqrt(rg / M)
+
+
+
 if __name__ == "__main__":
-    print "===== Testing the Atoms class ====="
+    print("===== Testing the Atoms class =====")
     #coords = np.array([1, 0, 0] + [0, 1, 0] + [0, 0, 1]).reshape((3, 3))
-    coords = np.array([0, 0, 0] + [1, 0, 2] + [2, 0, 3]).reshape((3, 3))
+    coords = np.array([[0, 0, 0], [1, 0, 2], [2, 0, 3]], dtype=float)
     atoms = Atoms(["H", "He", "Li"], coords)
-    print atoms
+    print(atoms)
     
     s = np.arange(3)
-    print "* Shifting atoms by", s
+    print("* Shifting atoms by", s)
     atoms.shift(s)
-    print atoms
+    print(atoms)
 
     atoms.coords = np.copy(coords)
-    theta, phi = 90, 90
-    print "* Rotating atoms by theta=%i, phi=%i:" % (theta, phi)
+    theta, phi = 90.0, 90.0
+    print("* Rotating atoms by theta=%i, phi=%i:" % (theta, phi))
     atoms.rotate(radians(theta), radians(phi))
-    print atoms
+    print(atoms)
 
     atoms.coords = np.copy(coords)
-    print "* Shifting atoms to its centre of mass"
+    print("* Shifting atoms to its centre of mass")
     atoms.shift_com()
-    print atoms
+    print(atoms)
     
     atoms.coords = np.copy(coords)
     n1, n2 = 1, 2
-    print "* Flipping atoms %i, %i:" % (n1, n2)
+    print("* Flipping atoms %i, %i:" % (n1, n2))
     atoms.flip(n1, n2)
-    print atoms
+    print(atoms)
 
     atoms.coords = np.copy(coords)
     n1, n2 = 1, 2
-    print "* Aligning atoms %i, %i:" % (n1, n2)
+    print("* Aligning atoms %i, %i:" % (n1, n2))
     atoms.align(n1, n2)
-    print atoms
+    print(atoms)
+    
+    atoms.coords = np.copy(coords)
+    print(atoms)
+    print("* Radius of gyration: %.2f" % atoms.Rg())
 
 
